@@ -2,10 +2,13 @@
     "name": "root/html",
     "autoload": {
         "psr-4": {
-            "Root\\Html\\": "src/"
+            "App\\": "app/",
+            "Config\\": "config/",
+            "Core\\": "core/"
         }
     },
     "require": {
-        "larapack/dd": "^1.1"
+        "larapack/dd": "^1.1",
+        "ext-pdo": "*"
     }
 }
