@@ -9,4 +9,13 @@ abstract class Controller
         return true;
     }
     public function after(string $action) {}
+
+    protected function response(int $code = 200, array $body = [], array $err = []): array
+    {
+        return [
+          'code' => 200,
+          'body' => $body,
+          'err' => $err,
+        ];
+    }
 }

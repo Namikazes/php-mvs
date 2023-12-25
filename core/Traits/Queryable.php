@@ -22,6 +22,61 @@ trait Queryable
         return $obj;
     }
 
+    static public function all(): array
+    {
+        return static::select()->get();
+    }
+
+    static public function find(int $id): static | false
+    {
+        $query = db()->prepare(" SELECT * FROM " . static::$tableName . " WHERE id = :id ");
+        $query->bindParam('id', $id);
+        $query->execute();
+
+        return $query->fetchObject(static::class);
+    }
+
+    static public function findBy(string $column, $value): static | false
+    {
+        $query = db()->prepare(" SELECT * FROM " . static::$tableName . " WHERE $column = :$column ");
+        $query->bindParam($column, $value);
+        $query->execute();
+
+        return $query->fetchObject(static::class);
+    }
+
+    static public function create(array $fields): false|int
+    {
+        $params = static::preperQueryParams($fields);
+        $query = db()->prepare("INSERT INTO " . static::$tableName . " ($params[keys]) VALUES ($params[pleceholders])");
+
+        if (!$query->execute($fields)) {
+            return false;
+        }
+
+        $query->closeCursor();
+
+        return (int) db()->lastInsertId();
+    }
+
+    static public function remove(int $id):bool
+    {
+        $query = db()->prepare("DELETE FROM " . static::$tableName . " WHERE id = :id ");
+        $query->bindParam('id', $id);
+        return $query->execute();
+    }
+
+    static protected function preperQueryParams(array $fields): array
+    {
+        $keys = array_keys($fields);
+        $pleceholders = preg_filter('/^/', ':', $keys);
+
+        return [
+            'keys' => implode(', ', $keys),
+            'pleceholders' => implode(', ', $pleceholders)
+        ];
+    }
+
 
     static protected function resetQuery(): void
     {
