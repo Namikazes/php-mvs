@@ -3,6 +3,9 @@
 
 use Core\Config;
 
+/**
+ * @return array
+ */
 function requestBody(): array
 {
     $data = [];
@@ -13,6 +16,20 @@ function requestBody(): array
     }
 
     return $data;
+}
+
+/**
+ * @param Exception $exception
+ * @return void
+ */
+function error_response(Exception $exception):void
+{
+    die(json_response(422, [
+        'data' => [
+            'message' => $exception->getMessage()
+        ],
+        'err' => $exception->getTrace()
+    ]));
 }
 
 function json_response($code = 200, array $data = []): string

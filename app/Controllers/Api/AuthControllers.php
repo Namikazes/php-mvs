@@ -1,14 +1,15 @@
 <?php
 
 
-namespace App\Controllers;
+namespace App\Controllers\Api;
 
 use App\Models\User;
 use App\Validators\Auth\AuthValidator;
 use App\Validators\Auth\RegisterValidators;
 use Core\Controller;
+use ReallySimpleJWT\Token;
 
-class UsersControllers extends Controller
+class AuthControllers extends Controller
 {
     public function store():array
     {
@@ -30,16 +31,17 @@ class UsersControllers extends Controller
     public function singin(): array
     {
         $data = requestBody();
-        $validate = new AuthValidator();
+        $validator = new AuthValidator();
 
-        if($validate->validate($data)) {
+        if($validator->validate($data)) {
             $user = User::findBy('email', $data['email']);
             if(password_verify($data['password'], $user->password)) {
-                $token = random_bytes(32);
-
+                $expiration = time() + 3600;
+                $token = Token::create($user->id, $user->password, $expiration, 'localhost');
+                
                 return $this->response(200, compact('token'));
             }
         }
-        return $this->response(200, [], $validate->getErr());
+        return $this->response(200, [], $validator->getErr());
     }
 }
