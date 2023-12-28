@@ -38,7 +38,7 @@ class AuthControllers extends Controller
             if(password_verify($data['password'], $user->password)) {
                 $expiration = time() + 3600;
                 $token = Token::create($user->id, $user->password, $expiration, 'localhost');
-                
+
                 return $this->response(200, compact('token'));
             }
         }
