@@ -24,8 +24,6 @@ try{
 
     die(\Core\Router::dispatch($_SERVER['REQUEST_URI']));
 
-} catch (PDOException $exception){
-    dd("PDOException", $exception);
 } catch (Exception $exception) {
-    dd("Exception", $exception);
+    error_response($exception);
 }
