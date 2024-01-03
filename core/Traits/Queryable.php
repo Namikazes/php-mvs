@@ -2,6 +2,7 @@
 
 namespace Core\Traits;
 
+use Enums\SQL;
 use PDO;
 
 trait Queryable
@@ -24,8 +25,9 @@ trait Queryable
 
     public function update(array $fields): static
     {
-        $query = "UPDATE" . static::$tableName . " SET" . $this->updatePlaceholders(array_keys($fields)) . " WHERE id = :id";
+        $query = "UPDATE " . static::$tableName . " SET " . $this->updatePlaceholders(array_keys($fields)) . " WHERE id = :id";
         $query = db()->prepare($query);
+
         $fields['id'] = $this->id;
         $query->execute($fields);
 
@@ -66,18 +68,18 @@ trait Queryable
         return $query->fetchObject(static::class);
     }
 
-    static public function create(array $fields): false|int
+    static public function create(array $fields): null|static
     {
         $params = static::preperQueryParams($fields);
         $query = db()->prepare("INSERT INTO " . static::$tableName . " ($params[keys]) VALUES ($params[pleceholders])");
 
         if (!$query->execute($fields)) {
-            return false;
+            return null;
         }
 
         $query->closeCursor();
 
-        return (int) db()->lastInsertId();
+        return static::find( db()->lastInsertId());
     }
 
     static public function remove(int $id):bool
@@ -98,46 +100,103 @@ trait Queryable
         ];
     }
 
+    static public function __callStatic(string $name, array $args): mixed
+    {
+        if(in_array($name, ['where'])) {
+            $obj =  static::select();
+            return call_user_func_array([$obj, $name], $args);
+        }
+    }
+
+    public function __call(string $name, array $args): mixed
+    {
+        if(in_array($name, ['where'])) {
+            return call_user_func_array([$this, $name], $args);
+        }
+    }
+
 
     static protected function resetQuery(): void
     {
         static::$query = '';
     }
 
-    protected function where(string $column, string $operator, $value = null): static
+     protected function where(string $column, string $operator, $value = null): static
     {
-        if($this->prevent(['group', 'limit', 'order', 'having'])) {
-            throw new \Exception(static::class . "The where method cannot work after:['group', 'limit', 'order', 'having]", 422);
+        if ($this->prevent(['group', 'limit', 'order', 'having'])) {
+            throw new \Exception(
+                static::class .
+                ": WHERE can not be after ['group', 'limit', 'order', 'having']"
+            );
         }
 
         $obj = in_array('select', $this->commands) ? $this : static::select();
 
-        if(!is_null($value) && !is_bool($value) &&
-            !is_numeric($value) && !is_array($value) &&
-            !in_array($operator, ['IN', 'NOT IN']))
-        {
-            $value = "'$value'"; // Use for SQL queries
+        if (
+            !is_null($value) &&
+            !is_bool($value) &&
+            !is_numeric($value) &&
+            !is_array($value) &&
+            !in_array($operator, [SQL::IN_OPERATOR->value, SQL::NOT_IN_OPERATOR->value]) &&
+            $value !== SQL::NULL->value
+        ) {
+            $value = "'$value'";
         }
 
-        if(!is_null($value)) {
+        if (is_null($value)) {
             $value = 'NULL';
         }
 
-        if(is_array($value)) {
-            $value = array_map(fn($item) => is_string($item) ? "'item'" : $item, $value);
+        if (is_array($value)) {
+            $value = array_map(fn($item) => is_string($item) && $item !== SQL::NULL->value ? "'$item'" : $item, $value);
             $value = '('. implode(', ', $value) .')';
         }
 
         if (!in_array('where', $obj->commands)) {
-            static::$query .= " WHERE";
-        } else {
-            static::$query .= " AND";
+            static::$query .= "WHERE";
         }
 
         static::$query .= " $column $operator $value";
         $this->commands[] = 'where';
 
         return $obj;
+    }
+
+    public function andWhere(string $column, string $operator, $value = null): static
+    {
+        static::$query .= " AND";
+        return $this->where($column, $operator, $value);
+    }
+
+    public function orWhere(string $column, string $operator, $value = null): static
+    {
+        static::$query .= " OR";
+        return $this->where($column, $operator, $value);
+    }
+
+    public function orderBy(array $columns): static
+    {
+        if (!$this->prevent(['select'])) {
+            throw new \Exception(
+                static::class .
+                ": [ORDER BY] can not be called before [SELECT]"
+            );
+        }
+
+        $this->commands[] = 'order';
+        $lastKey = array_key_last($columns);
+        static::$query .= " ORDER BY ";
+
+        foreach ($columns as $column => $order) {
+            static::$query .= "$column $order->value" . ($column === $lastKey ? "" : ", ");
+        }
+
+        return $this;
+    }
+
+    public function sql():string
+    {
+        return static::$query;
     }
 
     protected function prevent(array $allowedMethods): bool
@@ -149,6 +208,19 @@ trait Queryable
         }
 
         return false;
+    }
+
+    public function exists():bool
+    {
+        if (!$this->prevent(['select'])) {
+            throw new \Exception(
+                static::class .
+                ": exists can not be called before ['select']"
+            );
+        }
+
+        $result = $this->get();
+        return !empty($result);
     }
 
 
