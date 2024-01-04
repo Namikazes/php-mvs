@@ -41,3 +41,33 @@
     'action' => 'remove',
     'method' => 'DELETE'
 ]);
+
+\Core\Router::add('api/notes', [
+    'controller' => \App\Controllers\Api\NotesController::class,
+    'action' => 'index',
+    'method' => 'GET'
+]);
+
+\Core\Router::add('api/notes/{id:\d+}', [
+    'controller' => \App\Controllers\Api\NotesController::class,
+    'action' => 'show',
+    'method' => 'GET'
+]);
+
+\Core\Router::add('api/notes/{id:\d+}/update', [
+    'controller' => \App\Controllers\Api\NotesController::class,
+    'action' => 'update',
+    'method' => 'PUT'
+]);
+
+\Core\Router::add('api/notes/store', [
+    'controller' => \App\Controllers\Api\NotesController::class,
+    'action' => 'store',
+    'method' => 'POST'
+]);
+
+\Core\Router::add('api/notes/{id:\d+}/remove', [
+    'controller' => \App\Controllers\Api\NotesController::class,
+    'action' => 'remove',
+    'method' => 'DELETE'
+]);
